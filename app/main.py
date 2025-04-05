@@ -214,7 +214,7 @@ async def create_tests(
     return {"test_ids": test_ids}
 
 
-@app.post("/search", response_model=PineconeQueryResponse)
+@app.post("/search/", response_model=PineconeQueryResponse)
 async def search_tests(
     query_request: PineconeQueryRequest,
     db: Session = Depends(get_db),
