@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from typing import List
 import os
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.models.models import (
     Token,
@@ -45,9 +47,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+# Update the `get_db` dependency to use the updated engine
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the AI Recommendation Engine API"}
+
 
 @app.get("/health")
 async def health_check():
@@ -60,6 +77,7 @@ async def health_check():
         "service": "AI Recommendation Engine",
         "version": "1.0.0",
     }
+
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
@@ -77,11 +95,18 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", str(ACCESS_TOKEN_EXPIRE_MINUTES))))
+    access_token_expires = timedelta(
+        minutes=int(
+            os.environ.get(
+                "ACCESS_TOKEN_EXPIRE_MINUTES", str(ACCESS_TOKEN_EXPIRE_MINUTES)
+            )
+        )
+    )
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 @app.get("/users/{id}", response_model=User)
 async def read_users_me(id: int, db: Session = Depends(get_db)):
@@ -90,8 +115,11 @@ async def read_users_me(id: int, db: Session = Depends(get_db)):
     """
     user = db.query(DBUser).filter(DBUser.id == id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
     return user
+
 
 @app.post("/users/", response_model=User, status_code=status.HTTP_201_CREATED)
 async def create_user(user: UserCreate, db: Session = Depends(get_db)):
@@ -129,6 +157,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
 
     return db_user
+
 
 @app.post("/tests/", status_code=status.HTTP_201_CREATED)
 async def create_tests(
@@ -184,7 +213,8 @@ async def create_tests(
 
     return {"test_ids": test_ids}
 
-@app.post("/search/", response_model=PineconeQueryResponse)
+
+@app.post("/search", response_model=PineconeQueryResponse)
 async def search_tests(
     query_request: PineconeQueryRequest,
     db: Session = Depends(get_db),
