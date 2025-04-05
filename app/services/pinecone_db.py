@@ -75,6 +75,8 @@ class PineconeDatabase:
 
     def query(self, query: List[float], top_k: int) -> List[Dict]:
         """Query vectors from the database."""
+        if top_k==0:
+            top_k = 1
         top_k = min(10, top_k)
         embedding = self.pc.inference.embed(
             model="multilingual-e5-large",

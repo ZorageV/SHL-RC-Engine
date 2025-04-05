@@ -252,11 +252,11 @@ async def search_tests(
                     "assessment_length": test_data.assessment_length,
                 }
             )
-
+            match_score = float(match_obj.score)
             if test_data.assessment_length:
                 try:
                     assessment_length = int(test_data.assessment_length)
-                    if assessment_length > query_request.time:
+                    if assessment_length > query_request.time and match_score>0.5:
                         continue
                 except (ValueError, TypeError):
                     pass
