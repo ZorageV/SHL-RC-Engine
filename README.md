@@ -113,3 +113,7 @@ The application is deployed using the following tools:
     ]
   }
   ```
+
+## Recommendation Workflow
+
+For detailed information about the recommendation workflow, refer to the [Recommendation Workflow Documentation](./recommendation_workflow.md).
